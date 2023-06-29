@@ -1,44 +1,50 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class MoveAction : MonoBehaviour
+public class MoveAction : BaseAction
 {
     [SerializeField] private Animator _unitAnimator;
     [SerializeField] private int _maxMoveDistance = 4;
     
     private Vector3 _targetPosition;
-    private Unit _unit;
 
-    private void Awake()
+    protected override void Awake()
     {
-        _unit = GetComponent<Unit>();
+        base.Awake();
         _targetPosition = transform.position;
     }
 
     private void Update()
     {
+        if(!_isActive) return;
+        
         const float stoppingDistance = 0.1f;
-
+        var moveDirection = (_targetPosition - transform.position).normalized;
+        
         if (Vector3.Distance(transform.position, _targetPosition) > stoppingDistance)
         {
-            var moveDirection = (_targetPosition - transform.position).normalized;
             const float moveSpeed = 4f;
             transform.position += moveDirection * (moveSpeed * Time.deltaTime);
-
-            const float rotateSpeed = 10f;
-            transform.forward = Vector3.Lerp(transform.forward, moveDirection, rotateSpeed * Time.deltaTime);
 
             _unitAnimator.SetBool("IsWalking", true);
         }
         else
         {
             _unitAnimator.SetBool("IsWalking", false);
+            _isActive = false;
+            _onActionComplete();
         }
+        
+        const float rotateSpeed = 10f;
+        transform.forward = Vector3.Lerp(transform.forward, moveDirection, rotateSpeed * Time.deltaTime);
     }
 
-    public void Move(GridPosition gridPosition)
+    public void Move(GridPosition gridPosition, Action onActionComplete)
     {
+        _onActionComplete = onActionComplete;
         _targetPosition = LevelGrid.Instance.GetWorldPosition(gridPosition);
+        _isActive = true;
     }
 
     public bool IsValidActionGridPosition(GridPosition gridPosition)
@@ -80,5 +86,11 @@ public class MoveAction : MonoBehaviour
         }
         
         return validGridPositionList;
+    }
+    
+    
+    public override string GetActionName()
+    {
+        return "Move";
     }
 }
