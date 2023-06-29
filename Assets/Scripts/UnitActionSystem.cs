@@ -1,11 +1,14 @@
 using System;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 public class UnitActionSystem : MonoBehaviour
 {
     public static UnitActionSystem Instance { get; private set; }
     
     public event EventHandler OnSelectedUnitChanged;
+    public event EventHandler OnSelectedActionChanged;
+    public event EventHandler<bool> OnBusyChanged;
     
     [SerializeField] private Unit _selectedUnit;
     [SerializeField] private LayerMask _unitLayerMask;
@@ -34,6 +37,8 @@ public class UnitActionSystem : MonoBehaviour
     {
         if (_isBusy) return;
      
+        if(EventSystem.current.IsPointerOverGameObject()) return;
+        
         if (TryHandleUnitSelection()) return;
         
         HandleSelectedAction();
@@ -44,27 +49,26 @@ public class UnitActionSystem : MonoBehaviour
         if (Input.GetMouseButtonDown(0))
         {
             var mouseGridPosition = LevelGrid.Instance.GetGridPosition(MouseWorld.GetPosition());
-            
-            switch (_selectedAction)
+
+            if (_selectedAction.IsValidActionGridPosition(mouseGridPosition))
             {
-                case MoveAction moveAction:
-                    if (moveAction.IsValidActionGridPosition(mouseGridPosition))
-                    {
-                        SetBusy();
-                        moveAction.Move(mouseGridPosition, ClearBusy);
-                    }
-                    break;
-                
-                case SpinAction spinAction:
-                    SetBusy();
-                    spinAction.Spin(ClearBusy);
-                    break;
+                SetBusy();
+                _selectedAction.TakeAction(mouseGridPosition, ClearBusy);    
             }
         }
     }
 
-    private void SetBusy() => _isBusy = true;
-    private void ClearBusy() => _isBusy = false;
+    private void SetBusy()
+    {
+        _isBusy = true;
+        OnBusyChanged?.Invoke(this, _isBusy);
+    }
+
+    private void ClearBusy()
+    {
+        _isBusy = false;
+        OnBusyChanged?.Invoke(this, _isBusy);
+    }
 
     private bool TryHandleUnitSelection()
     {
@@ -76,6 +80,8 @@ public class UnitActionSystem : MonoBehaviour
             {
                 if (raycastHit.transform.TryGetComponent(out Unit unit))
                 {
+                    if (unit == _selectedUnit) return false;
+
                     SetSelectedUnit(unit);
                     return true;
                 }
@@ -97,10 +103,9 @@ public class UnitActionSystem : MonoBehaviour
     public void SetSelectedAction(BaseAction baseAction)
     {
         _selectedAction = baseAction;
+        OnSelectedActionChanged?.Invoke(this, EventArgs.Empty);
     }
-    
-    public Unit GetSelectedUnit()
-    {
-        return _selectedUnit;
-    }
+
+    public Unit GetSelectedUnit() => _selectedUnit;
+    public BaseAction GetSelectedAction() => _selectedAction;
 }
