@@ -43,4 +43,6 @@ public class SpinAction : BaseAction
             unitGridPosition
         };
     }
+
+    public override int GetActionPointsCost() => 2;
 }
