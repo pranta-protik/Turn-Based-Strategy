@@ -4,7 +4,6 @@ using UnityEngine;
 
 public class SpinAction : BaseAction
 {
-    
     private float _totalSpinAmount;
 
     private void Update()
